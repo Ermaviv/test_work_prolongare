@@ -5,19 +5,19 @@ import unicodedata
 STATISTIC_FILE = "financial_data.csv"
 STUFF_FILE = "prolongations.csv"
 WRITE_FILE = "counting_prolonging.csv"
-STOP_WORDS = ['', 'в ноль', 'стоп', 'end']
+STOP_WORDS = ['стоп', 'end']
+NULL_WORDS = ['', 'в ноль']
 
 
 SYMBOLS = dict((re.escape(k), v) for k, v in {",": ".", " ": ""}.items())
 pattern = re.compile("|".join(SYMBOLS.keys()))
 
 
-def encode_number(string):
-    try:
-        string = unicodedata.normalize("NFKC", string)
-    except TypeError:
-        return string
+def decode_number(string):
+    string = unicodedata.normalize("NFKC", string)
     string = pattern.sub(lambda m: SYMBOLS[re.escape(m.group(0))], string)
+    if string in NULL_WORDS:
+        string = 0
     try:
         string = float(string)
     except ValueError:
@@ -37,62 +37,77 @@ with (
     # словарь, где ключ - ФИО менеджера, значение - список сумм за месяц
     stuff_money = {}
 
-    # словарь, где ключ - ФИО менеджера, значение - список id его проектов
-    sort_stuff_ids = {}
+    # словарь, ключ - ФИО менеджера,
+    # значение - список номеров его проектов в статистике
+    stuff_row_nubmers = {}
 
-    for manager in stuff:
-        try:
-            manager[0] = int(manager[0])
-        except ValueError:
-            continue
-        if manager[2] not in sort_stuff_ids.keys():
-            sort_stuff_ids[manager[2]] = []
-            stuff_money[manager[2]] = []
-        sort_stuff_ids[manager[2]].append(manager[0])
+    # сколько столбцов у таблицы
+    length_table = len(statistic[0])
 
-    for manager in sort_stuff_ids.keys():  # выбираем менеджера
-        # какие проекты делал менеджер (копия списка из словаря)
-        ids_manager = sort_stuff_ids[manager]
+    kpi_1, kpi_2 = [], []
+
+    head = statistic[0]
+    head[0] = 'ФИО менеджера'
+    del head[1:3]
+    del head[-1]
+
+    writer.writerow(head)
+    # наполняем словарь stuff_row_nubmers
+    for index in range(1, len(statistic)):
+        full_name = statistic[index][length_table-1]
+        if full_name not in stuff_row_nubmers.keys():
+            stuff_row_nubmers[full_name] = []
+        stuff_row_nubmers[full_name].append(index)
+
+    for manager in stuff_row_nubmers.keys():  # выбираем менеджера
+        ids_manager = stuff_row_nubmers[manager]
+
+        # добавляем ФИО менеджера для каждого КПД
+        kpi_1.append(manager)
+        kpi_2.append(manager)
         summ_for_pre_month = 0
-        summ_for_pre_month_current_no = 0
+        summ_for_pre_month_current_yes = 0
         summ_for_pre_pre_month_pre_no = 0
         summ_for_pre_pre_month_pre_no_current_yes = 0
-        # номера строк в statistic, соответствующие id-проектам, которыми занимался менеджер
-        ids_row_in_statistic = []
 
-        for id_1 in ids_manager:  # берем по 1-му id проекта, что делал менеджер
-            for row in statistic:  # проверяем все строки из файла со статистикой...
-                try:
-                    row[0] = int(row[0])
-                except ValueError:
-                    continue
+        # преобразуем все "строковые" числа на float-числа
+        # выбираем номер строки из statistic
+        index_first_month = 2
+        for id_row in ids_manager:
+            # выбираем всю строку по ее номеру
+            row = statistic[id_row]
+            for index in range(index_first_month, length_table):
+                if row[index] not in STOP_WORDS:
+                    row[index] = decode_number(row[index])
+                else:
+                    for index_break in range(index, length_table):
+                        row[index_break] = 0
+                    break
 
-                if row[0] == id_1:  # первая колонка строки из statistic соответствует искомой
-                    for index in range(2, len(row)-1):
-                        if type(row[index]) is not float():  # костыль
-                            row[index] = encode_number(row[index])
-                    # индекс (вагонетка) у месяца
-                    index_month = 4
-                    while index_month < len(row):
-                        # смотрим суммы за для 1-ого КПД
-                        if row[index_month-1] not in STOP_WORDS:
-                            summ_for_pre_month += row[index_month-1]
-                            if row[index_month] in STOP_WORDS:
-                                summ_for_pre_month_current_no += row[index_month-1]
-                        try:
-                            KPD_1 = summ_for_pre_month_current_no / summ_for_pre_month
-                        except ZeroDivisionError:
-                            KPD_1 = 0
-                        writer.writerow(str(KPD_1))
-                        # смотрим суммы за для 2-ого КПД
-                        row[index_month-2] = row[index_month-2]
-                        if row[index_month-2] not in STOP_WORDS and row[index_month-1] in STOP_WORDS:
-                            summ_for_pre_pre_month_pre_no += row[index_month-2]
-                            if row[index_month] not in STOP_WORDS:
-                                summ_for_pre_pre_month_pre_no_current_yes += row[index_month-2]
-                        try:
-                            KPD_2 = summ_for_pre_pre_month_pre_no_current_yes / summ_for_pre_pre_month_pre_no
-                        except ZeroDivisionError:
-                            KPD_2 = 0
-                        writer.writerow(str(KPD_2))
-                        index_month += 1
+        index_first_month_kpi = index_first_month + 2
+        for index_month in range(index_first_month_kpi, length_table):
+            index_pre_month = index_first_month + 1
+            index_pre_pre_month = index_first_month
+            # суммируем все показатели за месяц
+            for id_row in ids_manager:
+                summ_for_pre_month += statistic[id_row][index_pre_month]
+                if statistic[id_row][index_month] != 0:
+                    summ_for_pre_month_current_yes += statistic[id_row][index_pre_month]
+                # если пред-предыдущий месяц не пуст, а предыдущий месяц пуст, то...
+                if (statistic[id_row][index_pre_pre_month] != 0 and
+                        statistic[id_row][index_pre_month] == 0):
+                    summ_for_pre_pre_month_pre_no += statistic[id_row][index_pre_pre_month]
+                    if statistic[id_row][index_month] != 0:
+                        summ_for_pre_pre_month_pre_no_current_yes += statistic[id_row][index_pre_pre_month]
+            try:
+                kpi_1.append(summ_for_pre_month_current_yes / summ_for_pre_month)
+            except ZeroDivisionError:
+                kpi_1.append(0)
+            try:
+                kpi_2.append(summ_for_pre_pre_month_pre_no_current_yes / summ_for_pre_pre_month_pre_no)
+            except ZeroDivisionError:
+                kpi_2.append(0)
+        writer.writerow(kpi_1)
+        writer.writerow(kpi_2)
+        kpi_1.clear()
+        kpi_2.clear()
