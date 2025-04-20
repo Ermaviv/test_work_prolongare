@@ -86,8 +86,8 @@ with (
         index_first_month_kpi = index_first_month + 2
         index_last_month_table = length_table-1
         for index_month in range(index_first_month_kpi, index_last_month_table):
-            index_pre_month = index_first_month + 1
-            index_pre_pre_month = index_first_month
+            index_pre_month = index_month - 1
+            index_pre_pre_month = index_month - 2
             # суммируем все показатели за месяц
             for id_row in ids_manager:
                 summ_for_pre_month += statistic[id_row][index_pre_month]
