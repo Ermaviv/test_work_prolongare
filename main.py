@@ -44,23 +44,23 @@ with (
 
     head_table = statistic[0]
     head_table[0] = 'ФИО менеджера'
-    del head_table[1:3]
+    del head_table[1:4]
     del head_table[-1]
 
     writer.writerow(head_table)
     # наполняем словарь stuff_row_nubmers
     for index in range(1, len(statistic)):
-        full_name = statistic[index][length_table-1]
+        full_name = statistic[index][-1]
         if full_name not in stuff_row_nubmers.keys():
             stuff_row_nubmers[full_name] = []
         stuff_row_nubmers[full_name].append(index)
 
     for manager in stuff_row_nubmers.keys():  # выбираем менеджера
-        ids_manager = stuff_row_nubmers[manager]
+        ids_manager = stuff_row_nubmers[manager]  # номера строк в таблице для выбранного менеджера
 
         # добавляем ФИО менеджера для каждого КПД
-        kpi_1.append(manager)
-        kpi_2.append(manager)
+        kpi_1.append(manager + ' КПД 1')
+        kpi_2.append(manager + ' КПД 2')
         summ_for_pre_month = 0
         summ_for_pre_month_current_yes = 0
         summ_for_pre_pre_month_pre_no = 0
@@ -81,7 +81,8 @@ with (
                     break
 
         index_first_month_kpi = index_first_month + 2
-        for index_month in range(index_first_month_kpi, length_table):
+        index_last_month_table = length_table-1
+        for index_month in range(index_first_month_kpi, index_last_month_table):
             index_pre_month = index_first_month + 1
             index_pre_pre_month = index_first_month
             # суммируем все показатели за месяц
@@ -96,11 +97,11 @@ with (
                     if statistic[id_row][index_month] != 0:
                         summ_for_pre_pre_month_pre_no_current_yes += statistic[id_row][index_pre_pre_month]
             try:
-                kpi_1.append(summ_for_pre_month_current_yes / summ_for_pre_month)
+                kpi_1.append('{:.3f}'.format(summ_for_pre_month_current_yes / summ_for_pre_month))
             except ZeroDivisionError:
                 kpi_1.append(0)
             try:
-                kpi_2.append(summ_for_pre_pre_month_pre_no_current_yes / summ_for_pre_pre_month_pre_no)
+                kpi_2.append('{:.3f}'.format(summ_for_pre_pre_month_pre_no_current_yes / summ_for_pre_pre_month_pre_no))
             except ZeroDivisionError:
                 kpi_2.append(0)
         writer.writerow(kpi_1)
