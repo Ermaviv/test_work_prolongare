@@ -56,8 +56,9 @@ with (
         stuff_row_nubmers[full_name].append(index)
 
     for manager in stuff_row_nubmers.keys():  # выбираем менеджера
+        if manager == 'Федорова Марина Васильевна':
+            manager = 'Федорова Марина Васильевна'
         ids_manager = stuff_row_nubmers[manager]  # номера строк в таблице для выбранного менеджера
-
         # добавляем ФИО менеджера для каждого КПД
         kpi_1.append(manager + ' КПД 1')
         kpi_2.append(manager + ' КПД 2')
@@ -69,6 +70,8 @@ with (
         # преобразуем все "строковые" числа на float-числа
         # выбираем номер строки из statistic
         index_first_month = 2
+
+        # приводим в порядок значения ячеек с суммами
         for id_row in ids_manager:
             # выбираем всю строку по ее номеру
             row = statistic[id_row]
