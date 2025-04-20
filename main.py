@@ -5,10 +5,9 @@ import unicodedata
 STATISTIC_FILE = "financial_data.csv"
 STUFF_FILE = "prolongations.csv"
 WRITE_FILE = "counting_prolonging.csv"
+
 STOP_WORDS = ['стоп', 'end']
 NULL_WORDS = ['', 'в ноль']
-
-
 SYMBOLS = dict((re.escape(k), v) for k, v in {",": ".", " ": ""}.items())
 pattern = re.compile("|".join(SYMBOLS.keys()))
 
@@ -34,9 +33,6 @@ with (
     statistic = list(csv.reader(statistic_file))
     writer = csv.writer(write_file)
 
-    # словарь, где ключ - ФИО менеджера, значение - список сумм за месяц
-    stuff_money = {}
-
     # словарь, ключ - ФИО менеджера,
     # значение - список номеров его проектов в статистике
     stuff_row_nubmers = {}
@@ -46,12 +42,12 @@ with (
 
     kpi_1, kpi_2 = [], []
 
-    head = statistic[0]
-    head[0] = 'ФИО менеджера'
-    del head[1:3]
-    del head[-1]
+    head_table = statistic[0]
+    head_table[0] = 'ФИО менеджера'
+    del head_table[1:3]
+    del head_table[-1]
 
-    writer.writerow(head)
+    writer.writerow(head_table)
     # наполняем словарь stuff_row_nubmers
     for index in range(1, len(statistic)):
         full_name = statistic[index][length_table-1]
